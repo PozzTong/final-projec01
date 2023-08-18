@@ -1,9 +1,39 @@
+// import 'dart:js';
+
 import 'package:final_pro01/home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
+}
+get _getInitFirebase {
+  return FutureBuilder(
+    future: Firebase.initializeApp(),
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const Scaffold(
+          body: Center(
+            child: Icon(
+              Icons.info,
+              size: 35,
+              color: Colors.red,
+            ),
+          ),
+        );
+      }
+      if (snapshot.connectionState == ConnectionState.done) {
+        return const MyHomePage(title: 'Flutter Demo Home Page');
+      }
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    },
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -17,7 +47,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: _getInitFirebase,
     );
   }
 }
@@ -69,8 +99,22 @@ class _MyHomePageState extends State<MyHomePage> {
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: GestureDetector(
-                onTap: () {
-                  Get.to(() => const HomeScreen());
+                onTap: () async {
+                  try {
+                    final credential = await FirebaseAuth.instance
+                        .signInWithEmailAndPassword(
+                            email: emailController.text,
+                            password: passController.text);
+                    if (credential != null) {
+                      Get.to(() => const HomeScreen());
+                    }
+                  } on FirebaseAuthException catch (e) {
+                    if (e.code == 'user-not-found') {
+                      print('No user found for that email.');
+                    } else if (e.code == 'wrong-password') {
+                      print('Wrong password provided for that user.');
+                    }
+                  }
                 },
                 child: Container(
                   height: 50,
